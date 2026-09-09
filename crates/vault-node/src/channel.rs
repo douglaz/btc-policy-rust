@@ -499,7 +499,7 @@ struct ManifestNode {
 /// keeps its byte offsets.
 ///
 /// ADR-0016 §3a seals `escape_bump_max_fee_pct` here, after coverage and before the
-/// node count; `docs/PROTOCOL-VECTORS.md` pins the byte and the revision-1 bump.
+/// node count; `08-wire-contract.md` (btc-policy-spec) pins the byte and the revision-1 bump.
 ///
 /// The sealed **network** (bead btc-policy-sealed-network-v2-mn6) follows that ceiling,
 /// still before the node count, as one explicit [`network_code`] byte: the vault has
@@ -6978,7 +6978,7 @@ mod golden {
             "the ladder ceiling still immediately precedes the network byte"
         );
         // Each supported network's code byte and full digest over that same input: the
-        // three digests `docs/PROTOCOL-VECTORS.md` §"Vector 2" publishes. The codes are
+        // three digests `08-wire-contract.md` WIR-27 (btc-policy-spec) publishes. The codes are
         // LITERAL 1/2/3, not the `NETWORK_CODE_*` constants — restating those against
         // themselves would pin nothing, and being explicit rather than `Network as u8` is
         // the whole reason they exist (rust-bitcoin inserted `Testnet4` before `Signet`).

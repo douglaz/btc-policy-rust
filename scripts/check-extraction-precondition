@@ -4,7 +4,7 @@
 WHY THIS EXISTS. The claim "the harness is blind to a mixed-class EXTRACTION path" is true
 only WITH STOLEN HOT KEYS: the misclassified spend's outputs pay hot-allowlist descriptors,
 i.e. the user's own hot wallet, so absent those keys the outcome is a capped move into that
-wallet, not attacker receipt (docs/adr/0017-one-external-review-at-stage-9.md, and
+wallet, not attacker receipt (ADR-0017 in btc-policy-spec, and
 `classify`'s own doc comment). Stated flat, a reader infers that the duress PIN plus the
 classification fault alone pay an attacker. They do not.
 

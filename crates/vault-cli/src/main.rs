@@ -1,4 +1,5 @@
-//! btc-vault coordinator CLI. See docs/DESIGN.md and docs/adr/.
+//! btc-vault coordinator CLI. The specification is the btc-policy-spec repository;
+//! docs/DESIGN.md here is history.
 
 mod adversary;
 mod attack;

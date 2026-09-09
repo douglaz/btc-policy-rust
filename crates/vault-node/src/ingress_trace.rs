@@ -78,7 +78,7 @@
 //!   ~25× the ~199 ms Argon2 effect the demoted wall clock existed to catch, and nothing
 //!   deterministic saw it. The wall-clock skew that was once the only thing in its way is
 //!   now advisory (its noise floor exceeded the effect it was aimed at), so this class
-//!   has no gate at all. `docs/THREAT-MODEL.md` R10 records the same boundary; keep the
+//!   has no gate at all. `12-security-requirements.md` SEC-47 (btc-policy-spec) records the same boundary; keep the
 //!   two in agreement.
 //!
 //! Instrument new sites here for ORDER; the two evaluation counters cover MEMORY-HARD
