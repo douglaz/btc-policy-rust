@@ -241,7 +241,7 @@ pub const ESCAPE_RBF_SEQUENCE: u32 = 0xffff_fffd;
 pub const MAX_ESCAPE_BUMPS: usize = 3;
 
 /// BIP340-style tagged SHA-256, `SHA256(SHA256(tag) ‖ SHA256(tag) ‖ msg)` — the
-/// exact construction the node-to-node channel uses (docs/adr/0013 §4), so an
+/// exact construction the node-to-node channel uses (ADR-0013 §4, btc-policy-spec), so an
 /// independent derivation on the coordinator and the node agree byte-for-byte.
 ///
 /// The channel calls THIS function rather than keeping its own copy: "agree
@@ -257,7 +257,7 @@ pub fn tagged_hash(tag: &str, msg: &[u8]) -> [u8; 32] {
 }
 
 /// Append `b` under a u32-LE length prefix — the channel's `var` convention
-/// (docs/adr/0013 §2, "the same length-prefix conventions the channel uses"),
+/// (ADR-0013 §2, btc-policy-spec, "the same length-prefix conventions the channel uses"),
 /// reused so the coordinator-request preimage follows the one length-prefix rule
 /// the whole protocol shares. The channel's `Enc::var` delegates here, so that
 /// "one rule" is a single definition rather than two copies of it.
@@ -1281,7 +1281,7 @@ mod tests {
         bytes.iter().map(|b| format!("{b:02x}")).collect()
     }
 
-    /// docs/PROTOCOL-VECTORS.md Vector 6. The determinism/separation tests above
+    /// `08-wire-contract.md` WIR-31 (btc-policy-spec), Vector 6. The determinism/separation tests above
     /// stay green if the field ORDER changes; only a frozen byte string catches a
     /// reordering, which is why the vector is pinned here and not derived.
     #[test]

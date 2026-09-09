@@ -608,7 +608,7 @@ mod tests {
         );
         // ...but refusing them must not record the bogus time. Once the clock is
         // corrected the node keeps working; a latched mark would expire every
-        // honestly-timed request until wall time caught up, and docs/adr/0007
+        // honestly-timed request until wall time caught up, and ADR-0007 (btc-policy-spec)
         // forbids restarting out of it.
         assert_eq!(
             log.check_and_record("n2", 1_600, 1_100, 1_000, None, false),

@@ -1,4 +1,5 @@
-//! vault-node daemon entry point. See docs/DESIGN.md and docs/adr/.
+//! vault-node daemon entry point. The specification is the btc-policy-spec repository;
+//! docs/DESIGN.md here is history.
 
 use std::process::ExitCode;
 use std::sync::Arc;
