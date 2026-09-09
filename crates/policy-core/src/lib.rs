@@ -18,9 +18,10 @@
 //! **Hot budget** (ADR-0014) — the allowlist bounds WHERE a hot spend pays, the
 //! Hot budget bounds HOW MUCH. Its rolling-window sibling needs node state, so it
 //! lives in vault-node; only the pure, per-transaction half is here. Sighash
-//! enforcement and the Hold live in vault-node; the chain backend (real prevout
-//! ground truth) is V0-6 — v0 still trusts each input's `witness_utxo` for the
-//! prevout script.
+//! enforcement and the Hold live in vault-node, as does the chain backend: the
+//! node resolves every input's prevout against bitcoind (`run_prevout_check`)
+//! BEFORE calling `evaluate`, so the `witness_utxo` this crate reads has already
+//! been cross-checked. This crate itself stays chain-view-free.
 //!
 //! One non-PSBT invariant lives here too, over the same descriptors:
 //! [`check_descriptor_network_kind`] — extended-key flavour versus the sealed network.
@@ -76,10 +77,18 @@ pub struct CheckParams {
 ///
 /// Class drives behavior, so a misclassification is a duress bypass, not a
 /// cosmetic error: escape-class completes immediately under *either* PIN, so if
-/// "has an escape output" were enough to earn escape-class, an attacker would
+/// "has an escape output" were enough to earn escape-class, an attacker could
 /// send 99%-to-hot + dust-to-escape and have it complete instantly under the
-/// duress PIN — extraction, with stolen hot keys. Requiring *every* destination
-/// output to pay the escape descriptor, and rejecting mixed, is what removes that.
+/// duress PIN — extraction, with stolen hot keys. What that misclassification
+/// defeats is the class-gated half of the safety track (the Hold, the velocity
+/// reserve, the duress freeze), NOT the class-independent per-transaction Hot
+/// cap: `evaluate` runs `check_hot_budget` for every class, so such a spend is
+/// still refused `HOT_BUDGET_EXCEEDED` once its hot outflow exceeds
+/// `hot_max_per_tx`, and arming plus Lockdown at `T` take no class at all. The
+/// bound is therefore "drain up to the cap, repeatable within the duress window",
+/// not "complete unconditionally" (bead btc-policy-yh7). Requiring *every*
+/// destination output to pay the escape descriptor, and rejecting mixed, is what
+/// removes the bypass.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TxClass {
     /// Every output pays the vault: a pure self-spend that moves nothing to
@@ -998,9 +1007,10 @@ mod tests {
 
     /// The duress bypass this predicate exists to close: 99% to the hot wallet
     /// plus dust to the escape wallet. Every output is individually allowlisted,
-    /// so `evaluate` passes it — a "has an escape output ⇒ escape-class" rule
-    /// would complete it IMMEDIATELY under the duress PIN, which with stolen hot
-    /// keys is extraction. It must be rejected outright.
+    /// so the allowlist check passes it — a "has an escape output ⇒ escape-class"
+    /// rule would let it skip the Hold and the duress freeze, which with stolen
+    /// hot keys is extraction up to the class-independent `hot_max_per_tx` cap
+    /// (bead btc-policy-yh7). It must be rejected outright.
     #[test]
     fn a_mixed_hot_and_escape_spend_is_rejected_even_though_every_output_is_allowlisted() {
         let psbt = psbt_with(

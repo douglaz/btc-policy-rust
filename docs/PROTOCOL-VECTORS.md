@@ -17,7 +17,7 @@ change a preimage and these do not fail, the test is not doing its job.
 | Channel endorsement | `btc-policy/channel-endorsement/v0` | `endorsement_vector_is_frozen` |
 | Channel envelope | `btc-policy/channel-envelope/v0` | `envelope_vector_is_frozen` |
 | User sig hash | `btc-policy/user-sig-hash/v0` | `user_sig_hash_vector_is_frozen` |
-| Coordinator request | `btc-policy/coord-request/v0` | `crates/vault-proto` commitment tests |
+| Coordinator request | `btc-policy/coord-request/v0` | `coord_request_vector_is_frozen` (in `crates/vault-proto/src/lib.rs`) |
 
 ## The hash construction
 
@@ -46,6 +46,10 @@ The preimages are built with one small encoder (`Enc`), and there are only five 
 
 Little-endian throughout, and every variable-length field is length-prefixed — so no
 concatenation ambiguity exists (`[a, b]` can never encode the same as `[ab]`).
+
+One encoding outside these vectors uses the OTHER convention: `Commitment::canonical_bytes` in
+`vault-proto` (the input to `commitment_id`) is big-endian on every integer. It is not a tagged
+hash and not a signature preimage; do not carry this file's convention into it.
 
 ## Vector 1 — Channel key
 
@@ -80,6 +84,8 @@ hot_budget.max_per_window_sat u64
 hot_budget.window_secs        u64
 hot_allowlist                 u32 count, then each descriptor as var
                               (canonicalized, sorted, deduped — order carries no policy meaning)
+                              = the node's `allowlist` MINUS `escape_descriptor` (ADR-0014). The
+                              vector below cannot show the exclusion — its allowlist has one entry.
 escape_descriptor             var
 max_derivation_index          u32
 escape_feerate_floor          u64        <- fire-time selector input
@@ -186,7 +192,7 @@ detectable.
 
 ```
 fields : msg_type(var) ‖ protocol_version(u32) ‖ wallet_id(32) ‖ manifest_hash(32)
-         ‖ from_node(u16) ‖ to_node(u16) ‖ payload(var) ‖ nonce(16) ‖ timestamp(u64)
+         ‖ from_node(u16) ‖ to_node(u16) ‖ payload(var) ‖ nonce(var; 16 bytes in v0) ‖ timestamp(u64)
 
 inputs : msg_type="partial", protocol_version=2, wallet_id=0x22*32,
          manifest_hash=0x33*32, from=1, to=2, payload=b"cGFydGlhbA==",
@@ -205,10 +211,16 @@ preimage:
 digest: 0126519fe495be0af38c44bd22e56bf1e4891d46c459c0bf8b004300c81faf0e
 ```
 
-## Vector 5 — User sig hash and Vector 6 — Coordinator request
+## Vector 5 — User sig hash
 
-Both are pinned in-tree (`user_sig_hash_vector_is_frozen`, and the commitment-binding tests in
-`crates/vault-proto`). The coordinator digest is:
+Pinned in-tree by `user_sig_hash_vector_is_frozen` (`crates/vault-node/src/channel.rs`).
+
+## Vector 6 — Coordinator request
+
+Pinned by `coord_request_vector_is_frozen` in `crates/vault-proto/src/lib.rs` (added 2026-09-09;
+until then this file claimed the commitment-binding tests pinned it, and they did not — they
+compare two constructions of the same value, so a field reordering left them green). The
+coordinator digest is:
 
 ```
 tagged_hash("btc-policy/coord-request/v0", wallet_id ‖ canonical_bytes(request))
@@ -216,7 +228,42 @@ tagged_hash("btc-policy/coord-request/v0", wallet_id ‖ canonical_bytes(request
 
 The `wallet_id` prefix is load-bearing: it domain-separates the signature to **one vault**, so a
 coordinator signature captured from one vault cannot be replayed against another that happens to
-share a coordinator key.
+share a coordinator key. It is never transmitted; signer and verifier each supply their own.
+
+```
+fields : tag(u8: 0x01 = Spend, 0x02 = Refresh)
+         Spend   : ‖ spend_psbt(var) ‖ escape_psbt(var) ‖ escape_bumps(u32 count, each var)
+                   ‖ pin(var) ‖ nonce(var) ‖ expiry(u64) ‖ policy_version(u32)
+         Refresh : ‖ refresh_psbt(var) ‖ nonce(var) ‖ expiry(u64) ‖ policy_version(u32)
+         PSBTs are bound as their exact base64 ASCII, un-decoded. The bump count is written even
+         when it is zero, so a dropped trailing rung changes the bytes.
+
+inputs : wallet_id=0x11*32, expiry=1752500000, policy_version=1
+         Spend   : spend_psbt="cHNidP8BSPEND", escape_psbt="cHNidP8BESCAPE", escape_bumps=[],
+                   pin="246802", nonce="nonce-vector"
+         Refresh : refresh_psbt="cHNidP8BREFRESH", nonce="r-1"
+
+Spend preimage (canonical_bytes, before the wallet_id prefix):
+01
+0d000000 63484e69645038425350454e44
+0e000000 63484e6964503842455343415045
+00000000
+06000000 323436383032
+0c000000 6e6f6e63652d766563746f72
+2007756800000000
+01000000
+
+Spend digest:   36ed7e2ef3a2dc1a0ad7ae76b2471d25c9be09c97e69e7c5ed82a2eca2c76cdc
+
+Refresh preimage:
+02
+0f000000 63484e696450384252454652455348
+03000000 722d31
+2007756800000000
+01000000
+
+Refresh digest: 28a372480bde07d363f57bd59d3603c5a4c18ea6e69b553f19470f3402579eb9
+```
 
 ## How to verify these
 

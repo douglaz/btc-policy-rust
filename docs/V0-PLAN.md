@@ -5,22 +5,25 @@ first-light is merged to `main` (commit 5dd3945). v0 is the full core the
 for one rb-lite run, so it is split into the tasks below. Each is one branch,
 one rb-lite run, one merge to `main`. Task files live in `.rb-lite/tasks/`.
 
-Dependency order (→ = depends on). DONE: V0-1, V0-2, V0-3, V0-5.
+Dependency order (→ = depends on). **STATUS 2026-09-09: every task below is DONE and on
+`main`.** The per-task "NEXT" headings further down are the build-order record from July and are
+retained as history; the summary here is the current state. What remains of v0 is the
+core-proven gate at the end (`btc-policy-gbw`), not any task in this graph.
 
 ```
 V0-1  sighash + real user-sig verification      DONE (b5a4247)
 V0-2  commitment struct + anti-replay log        DONE (ce932fa)
-V0-2b commitment MIGRATION: bind version/nLockTime/per-input nSequence  → feeds V0-8 (ADR-0012/0013 §2)
+V0-2b commitment MIGRATION: bind version/nLockTime/per-input nSequence  DONE (vault-proto `Commitment.version/lock_time`, `CommitmentInput.sequence`)
 V0-3  the Hold (two-phase signing)               DONE (8678a45)
 V0-5  verified change + consistency + descriptor allowlist  DONE (a9d57e9)
 V0-6  chain backend + watchtower classification + /events + broadcast  DONE (595c338, primitives)
 V0-6b drive the watchtower scan in the node daemon        DONE (2ce2933)
-V0-8  node-to-node assembly + node broadcast; coordinator → relay  NEXT (the spine)
-V0-4a dual PINs + deferred lockdown, RAMDISK state (reboot-death/tmpfs, 2026-07-16; node-local; no channel)  → parallel to V0-8
-V0-4b duress escape (rides V0-8's assembly+broadcast; pin decides + delayed) → V0-8, V0-4a
-V0-7  proptest + full test matrix + hold-clawback demo  → all
-V0-9  provisioning: manifest + config schema + coord auth-key backup  → feeds V0-8 (ADR-0013 §4/§5/§7)
-V0-10 recovery-path construction + operations  (was OUTSIDE the graph — ADR-0013 open item)
+V0-8  node-to-node assembly + node broadcast; coordinator → relay  DONE (`vault-node/src/channel.rs`, the spine)
+V0-4a dual PINs + deferred lockdown, RAMDISK state   DONE (`vault-node/src/pin.rs`, `channel::duress`)
+V0-4b duress escape (rides V0-8's assembly+broadcast)  DONE (`channel::duress`, `attack` harness)
+V0-7  proptest + full test matrix + hold-clawback demo  DONE (`prop_*` suites in all three crates, `demo theft-refused` act two)
+V0-9  provisioning: manifest + config schema + coord auth-key backup  DONE (2026-07-25, `btc-vault setup`)
+V0-10 recovery-path construction + operations  DONE (`vault-cli/src/recovery.rs`, `demo recovery-drill`, gated in CI)
 ```
 
 **MODEL B PIVOT (2026-07-15, user; authoritative spec: [ADR-0012](adr/0012-model-b-spend-and-duress-architecture.md)).** The coordinator is a relay, **trusted until the wrench attack, untrusted after** (never persists the pin); nodes assemble + broadcast every spend over an authenticated node-to-node channel, and nodes **validate** the coordinator-composed, user-signed txs rather than building them. This reverses "coordinator trusted in MVP" and revises "no intra-node comms" (nodes stay policy-isolated, not network-isolated). The full duress architecture + all re-review resolutions live in ADR-0012. It
@@ -41,7 +44,7 @@ re-submission** — NOT V0-3's re-submit-to-sign two-phase shape. V0-3's Hold
 *duration + pending/first-seen accounting* survive, but its **signing shape is
 reworked in V0-8 (spine) / V0-4 (duress)**; ADR-0004 is bannered accordingly.
 
-## V0-8 — node-to-node assembly + node broadcast (NEXT, the spine)
+## V0-8 — node-to-node assembly + node broadcast (DONE — heading kept from when it was NEXT, the spine)
 **Spec: [ADR-0012](adr/0012-model-b-spend-and-duress-architecture.md) + [ADR-0013](adr/0013-concrete-protocol-schemas.md) — the source of truth. Full Model B + the duress architecture are in HARDENING (2026-07-15): four adversarial rounds + a fresh-eyes whole-spec pass established no theft path and (after this pass's fixes) no silence break; a final fresh-eyes re-review gates the lock.**
 **Split confirmed — start with V0-8a (the channel), then V0-8b (node-side assemble+broadcast + spend-path/demo rework). V0-4's duress state machine rides on V0-8b and carries the adversarial regtest harness that empirically verifies ADR-0012's denial residuals (toxic-parent, in-flight-refresh, two-spend-probe, escape-class+refresh).**
 The founding rework. Design the node channel in detail first (ADR-0011 is a
@@ -151,7 +154,7 @@ document why pending-identity is safe without them.
 **RESOLVED (2026-07-15, ADR-0012/0013 §2): bind them.** The commitment MUST include
 `version`, `nLockTime`, and per-input `nSequence`. Tracked as the V0-2b migration above.
 
-## V0-6b — drive the watchtower scan in the node daemon (NEXT, small)
+## V0-6b — drive the watchtower scan in the node daemon (DONE 2ce2933 — heading kept from when it was NEXT)
 V0-6 delivered the watchtower as a caller-driven `watchtower_tick` pass; in the
 running daemon nothing calls it, so `GET /events` is always empty in production
 (a gap in the V0-6 task spec — the node-side scan driver belongs in the daemon,
@@ -167,7 +170,7 @@ not the coordinator). This task adds the minimal driver:
 Independent of V0-4 (which needs only the broadcast primitive, already done); run
 before the core-proven gate so the watchtower is real before real sats.
 
-## V0-4 — dual PINs + duress response + lockdown (after V0-6)
+## V0-4 — dual PINs + duress response + lockdown (DONE — built after V0-6 as planned)
 Design in HARDENING (2026-07-15; full detail in ADR-0012/0013, superseding ADR-0008; a final fresh-eyes re-review gates the lock). Build after V0-6 (needs node
 broadcast). **The mechanism is now fully specified in [ADR-0012](adr/0012-model-b-spend-and-duress-architecture.md) — the source of truth; the earlier bullets here (coordinator-assembled escape) are SUPERSEDED.** Locked shape (per ADR-0012):
 - Full Model B: nodes assemble + broadcast EVERY spend over the node channel;
@@ -239,7 +242,7 @@ for input ownership, change, and allowlist (DESIGN.md Policy model).
 - **Refresh min-interval + tight fee cap (ADR-0013 §6; shared with V0-3).** Enforce
   `refresh_min_interval_secs` and `refresh_max_feerate` on refresh-class spends.
 
-## V0-6 — chain-backend seam + watchtower + GET /events + node broadcast (NEXT)
+## V0-6 — chain-backend seam + watchtower + GET /events + node broadcast (DONE 595c338 — heading kept from when it was NEXT; the "sign-log reconciliation" named below was never built and is retired, see DESIGN.md's 2026-09-09 banner)
 vault-node: chain-backend trait (trust-PSBT impl behind it — T6 seam only), and
 a **broadcast capability** on that trait (needed by V0-4's node-distributed
 duress broadcast — ADR-0008); watchtower scan for recovery-path spends and
@@ -250,7 +253,7 @@ pull loop + sign-log reconciliation. ADR-0001/0002. Keep the trait's real
 network impls minimal (a regtest/bitcoind-RPC impl is enough for v0); the
 Core/Electrum/BIP158 choice and lying-coordinator enforcement stay v1 (T6).
 
-## V0-7 — proptest + full test matrix + demo act two
+## V0-7 — proptest + full test matrix + demo act two (DONE)
 proptest over PSBT mutation (no mutated tx passes an authorization bound to the
 original); the full D8 test matrix; upgrade `demo` to the two-act story
 (refusal + theft caught mid-Hold, clawed back by escape sweep).
@@ -276,13 +279,16 @@ The manifest is the **root of channel + coordinator trust**, so it is load-beari
 - **Full node config schema (ADR-0013 §5):** the security-load-bearing superset of DESIGN's TOML — pin
   hashes, `duress_delay_secs`, `escape_coverage_pct`, `escape_feerate_floor`, `epsilon_secs`,
   `refresh_min_interval_secs`, `refresh_max_feerate`, `pin_attempt_budget`, `coordinator_auth_pubkey`,
-  `manifest_hash`, channel peers/quotas. All node-enforced. Shared with V0-8.
+  `channel.expected_manifest_hash`, channel peers/quotas. All node-enforced — but NOT all
+  ceremony-written (2026-09-09): `btc-vault setup` never emits the two refresh bounds or the
+  pin-attempt budget, so provisioned nodes run on their serde defaults and none of the three is
+  manifest-sealed. Deciding whether they should be is bead `btc-policy-g8f`. Shared with V0-8.
 - **Coordinator auth-key backup (ADR-0012/0013 §7):** back up the coord auth key at setup, **separately**
   from the descriptor backup. **Loss with no backup bricks the normal path** (the manifest pins the pubkey
   → recovery-timelock exit only). **Rotation = a new vault** (immutable manifest); no in-place rotation in
   v0. State this loudly in the ceremony UX.
 
-## V0-10 — recovery-path construction + operations (NEW — was OUTSIDE the V0 task graph; ADR-0013 open item)
+## V0-10 — recovery-path construction + operations (DONE: `crates/vault-cli/src/recovery.rs`, `btc-vault demo recovery-drill`, a CI launch-gate step, and `docs/OPERATIONS-RUNBOOK.md` §6 — was OUTSIDE the V0 task graph; ADR-0013 open item)
 ADR-0013 flags the recovery path as currently outside the V0 graph — add it. The recovery branch
 (`and(older(TIMELOCK), thresh(2, REC_A, REC_B, REC_C))`; `TIMELOCK` a BIP68 512-second `older(...)`,
 180-day default = 30375 units — ADR-0013 §1) is the **sole exit from Lockdown** and the backstop for

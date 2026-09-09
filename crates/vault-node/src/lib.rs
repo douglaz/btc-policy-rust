@@ -2118,7 +2118,7 @@ impl Node {
     /// recovery path, and a reboot is node death, strictly stronger).
     ///
     /// The flag is set while holding `sign_state` so the transition LINEARIZES with
-    /// in-flight `/sign` and `/refresh` handlers, which re-check `is_locked_down`
+    /// in-flight `/sign` handlers (both request arms), which re-check `is_locked_down`
     /// under that same lock: a request either commits fully BEFORE this store (it
     /// began pre-Lockdown) or observes the flag and refuses — none registers a new
     /// candidate AFTER Lockdown. Because it acquires `sign_state`, it MUST NOT be
@@ -7331,8 +7331,8 @@ fn node_local_prevout_fetch_failure(
 }
 
 /// Fetch + compare in one call — the standalone form kept for the unit tests that
-/// exercise the whole preflight against a mock backend. The `/sign` and `/refresh`
-/// handlers instead pre-fetch out of the lock and call [`compare_prevouts_against_chain`]
+/// exercise the whole preflight against a mock backend. The `/sign` spend and refresh
+/// arms instead pre-fetch out of the lock and call [`compare_prevouts_against_chain`]
 /// via [`run_prevout_check`], so production never takes this fused path.
 #[cfg(test)]
 fn verify_prevouts_against_chain(

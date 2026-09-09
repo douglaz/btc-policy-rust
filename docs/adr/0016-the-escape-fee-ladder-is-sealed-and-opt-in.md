@@ -35,7 +35,7 @@ fees to get it confirmed.
 
 Precisely what it bounds on the honest composing path: **each replacement rung's ENTIRE transaction
 fee.** `escape_fee_ladder` compares `base_fee * multiplier` against `total_in * pct / 100`
-(fed.rs:354) — so it is a cap on a rung's whole fee, not on the increment above the base. What it
+(`escape_fee_ladder` in `crates/vault-cli/src/fed.rs`) — so it is a cap on a rung's whole fee, not on the increment above the base. What it
 does NOT bound is the base Escape itself: the base is always retained and never checked against the
 ceiling, so at `0` the base still pays its own (nonzero) fee and the vault simply offers no rungs.
 
