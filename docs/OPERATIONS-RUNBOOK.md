@@ -321,6 +321,11 @@ Test a restore. A backup you have never restored from is a hypothesis.
 
 ## 8. What this runbook does not cover
 
+- **The test drivers.** `btc-vault demo first-light|theft-refused|recovery-drill`, `btc-vault
+  attack [all|<scenario>]`, and `btc-vault signet spend` are gates and rehearsals, not operations:
+  each builds its own throwaway federation (the signet driver against a live public-signet node,
+  funded from a faucet — see `docs/SIGNET-SPEND-RECORD.md`) and none can touch your vault.
+  `docs/TEST-PLAN.md` owns them.
 - **Monitoring/alerting integration.** There is no paging integration; `/healthz`, `/events`, and
   `/pending` are pull surfaces and someone has to actually pull them.
 - **Key ceremony logistics** (who holds what, where, in which jurisdiction) — that is deployment

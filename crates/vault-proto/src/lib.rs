@@ -1276,4 +1276,40 @@ mod tests {
         assert!(coord_verify(&req, &sig, &pk, &TEST_WALLET_ID));
         assert!(!coord_verify(&req, &sig, &wrong_pk, &TEST_WALLET_ID));
     }
+
+    fn hex(bytes: &[u8]) -> String {
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    /// docs/PROTOCOL-VECTORS.md Vector 6. The determinism/separation tests above
+    /// stay green if the field ORDER changes; only a frozen byte string catches a
+    /// reordering, which is why the vector is pinned here and not derived.
+    #[test]
+    fn coord_request_vector_is_frozen() {
+        const FROZEN_SPEND_PREIMAGE_HEX: &str = "010d00000063484e69645038425350454e440e00000063484e696450384245534341504500000000060000003234363830320c0000006e6f6e63652d766563746f72200775680000000001000000";
+        const FROZEN_SPEND_DIGEST_HEX: &str =
+            "36ed7e2ef3a2dc1a0ad7ae76b2471d25c9be09c97e69e7c5ed82a2eca2c76cdc";
+        const FROZEN_REFRESH_PREIMAGE_HEX: &str =
+            "020f00000063484e69645038425245465245534803000000722d31200775680000000001000000";
+        const FROZEN_REFRESH_DIGEST_HEX: &str =
+            "28a372480bde07d363f57bd59d3603c5a4c18ea6e69b553f19470f3402579eb9";
+
+        let spend = sample_spend("nonce-vector");
+        let refresh = CoordRequest::Refresh {
+            refresh_psbt: "cHNidP8BREFRESH",
+            nonce: "r-1",
+            expiry: 1_752_500_000,
+            policy_version: 1,
+        };
+        assert_eq!(hex(&spend.canonical_bytes()), FROZEN_SPEND_PREIMAGE_HEX);
+        assert_eq!(
+            hex(&spend.auth_digest(&TEST_WALLET_ID)),
+            FROZEN_SPEND_DIGEST_HEX
+        );
+        assert_eq!(hex(&refresh.canonical_bytes()), FROZEN_REFRESH_PREIMAGE_HEX);
+        assert_eq!(
+            hex(&refresh.auth_digest(&TEST_WALLET_ID)),
+            FROZEN_REFRESH_DIGEST_HEX
+        );
+    }
 }

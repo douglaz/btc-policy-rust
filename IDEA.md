@@ -1,6 +1,10 @@
 # Bitcoin Vaults, MPC, Multisig and Programmable Signing Policies
 
-Status: July 12, 2026
+Status: July 12, 2026 — **HISTORICAL.** This is the pre-project survey. The single-co-signer
+architecture it proposes (§5) was abandoned on 2026-07-13 for the t-of-n federation, and the
+CTV/CCV upgrade path is out of scope. Nothing here is normative; the spec is `CONTEXT.md` plus
+`docs/adr/0012` and `docs/adr/0013` (see `README.md`). Kept unedited as the record of what was
+surveyed and why the federation reframe happened.
 
 ## Executive summary
 

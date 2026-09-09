@@ -1,6 +1,6 @@
 # Federated Policy Vault
 
-Self-hosted Bitcoin custody: a user hardware key plus a t-of-n federation of policy-enforcing signer nodes, with a timelocked recovery path. This glossary is the ubiquitous language; the design doc lives in-repo at [`docs/DESIGN.md`](docs/DESIGN.md), and [ADR-0012](docs/adr/0012-model-b-spend-and-duress-architecture.md) + [ADR-0013](docs/adr/0013-concrete-protocol-schemas.md) are the authoritative spec for the spend path + duress.
+Self-hosted Bitcoin custody: a user hardware key plus a t-of-n federation of policy-enforcing signer nodes, with a timelocked recovery path. This glossary is the ubiquitous language. [ADR-0012](docs/adr/0012-model-b-spend-and-duress-architecture.md) + [ADR-0013](docs/adr/0013-concrete-protocol-schemas.md) are the authoritative spec for the spend path, duress, and the wire/config/manifest schemas; [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) and [`docs/PROTOCOL-VECTORS.md`](docs/PROTOCOL-VECTORS.md) are authoritative for what they name. [`docs/DESIGN.md`](docs/DESIGN.md) is the July-2026 design of record, kept with dated supersession notes; where it disagrees with the ADRs or the tree, it is the stale side.
 
 ## Language
 
@@ -53,7 +53,7 @@ A staged Carrier whose holder decision is not yet terminal. A new holder require
 _Avoid_: ruled carrier state, live memo, pending spend
 
 **Carrier retirement stopwatch**:
-The process-local monotonic deadline `D` computed once at channel-mode Spend-nonce acceptance from the signed lifetime remaining on that node's accepted clock sample, using the production-fixed, test-pinnable `HotClock`. `E` is the signed/federation-facing attempt-authority bound; `D` ends node-local logical residency/actionability. Physical records may remain at/after `D` while an owner rules, but confer no holder authority. Later wall-clock changes, retries, relays, Carrier retirement and alternate signatures cannot move `D`; a clock already wrong at acceptance remains an explicit residual. A node built without the Node channel has no Carrier/stopwatch and keeps ordinary wall-only nonce lifetime.
+The process-local monotonic deadline `D` computed once at channel-mode Spend-nonce acceptance from the signed lifetime remaining on that node's accepted clock sample, using the production-fixed, test-pinnable `HotClock`. `E` is the signed/federation-facing attempt-authority bound; `D` ends node-local logical residency/actionability. Physical records may remain at/after `D` while an owner rules, but confer no holder authority. Later wall-clock changes, retries, relays, Carrier retirement and alternate signatures cannot move `D`; a clock already wrong at acceptance remains an explicit residual. The production daemon refuses to boot without the Node channel (`require_channel_mode`); the channel-less build exists only as a test fixture, and there it has no Carrier/stopwatch and keeps ordinary wall-only nonce lifetime.
 _Avoid_: expiry (the signed request field), timeout, nonce high-water mark
 
 **Carrier capacity**:
@@ -134,7 +134,7 @@ The silence-load-bearing rule that every request passing the PIN-independent pre
 _Avoid_: constant-time path, duress branch (there is no separate duress branch)
 
 **Lockdown**:
-The state in which every node refuses all signing (`FRAUD_SUSPECTED`), persisted for the node's lifetime (RAMDISK — never durable disk; reboot-death, 2026-07-16), with no reset on Sealed nodes — the only exit is the Recovery path. Needs no reboot survival: reboot = node death, strictly stronger than Lockdown. `/unseal` is rejected (ADR-0007), so no durable lockdown flag exists anywhere.
+The state in which every node refuses all signing (`FRAUD_SUSPECTED`), persisted for the node's lifetime (RAMDISK — never durable disk; reboot-death, 2026-07-16), with no reset on Sealed nodes — the only exit is the Recovery path. Needs no reboot survival: reboot = node death, strictly stronger than Lockdown. `/unseal` is rejected (ADR-0007). The latch is recorded as an extended attribute on the node's tmpfs config inode (`apply_persisted_lockdown` re-adopts it at load, so an in-place restart of the same sealed host cannot forget it); it has exactly the RAMDISK's durability and vanishes with the inode on reboot-death, so no durable lockdown flag exists on disk.
 _Avoid_: freeze (alone), pause
 
 **Sealed**:
@@ -162,7 +162,7 @@ The exact-transaction binding a node evaluates and signs against: wallet id, ver
 _Avoid_: authorization, intent, summary
 
 **Alert**:
-A structured event a Vault node queues locally (Watchtower hit or Refusal) for the Coordinator to pull and surface to the user. Nodes never push.
+A structured event a Vault node queues locally (a Watchtower hit, or a channel freshness reject) for the Coordinator to pull from `GET /events` and surface to the user. Nodes never push. A Refusal is NOT an Alert: it is answered synchronously on `/sign` and never queued (corrected 2026-09-09; the earlier "or Refusal" wording described a sign/refuse log that was never built).
 _Avoid_: notification, log line
 
 **Refusal**:
